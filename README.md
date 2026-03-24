@@ -31,7 +31,7 @@ TradeRouter.exe  (Windows, Tailscale Funnel)
 
 ### 1. Download
 
-Grab `TradeRouter.exe` and `WebhookOrderStrategy_v1.cs` from [Releases](https://github.com/roydufek/traderouter/releases/latest). Place the exe in its own folder — `TradeRouter.ini` is auto-created there on first run.
+Grab `TradeRouter.exe` and `WebhookOrderStrategy.cs` from [Releases](https://github.com/roydufek/traderouter/releases/latest). Place the exe in its own folder — `TradeRouter.ini` is auto-created there on first run.
 
 ### 2. Install Tailscale (optional — for TradingView webhooks)
 
@@ -43,7 +43,7 @@ TradeRouter starts and stops the Tailscale Funnel automatically via the **Tailsc
 
 ### 3. Load the NT8 Strategy
 
-Copy `WebhookOrderStrategy_v1.cs` into your NinjaTrader 8 NinjaScript folder:
+Copy `WebhookOrderStrategy.cs` into your NinjaTrader 8 NinjaScript folder:
 
 ```
 Documents\NinjaTrader 8\bin\Custom\Strategies\
@@ -274,7 +274,7 @@ Requires .NET 8 SDK. GitHub Actions builds automatically on every push to `main`
 | `TradeRouter.exe` | Main application (portable, no installer needed) |
 | `TradeRouter.ini` | Settings file (auto-created next to exe on first run) |
 | `TradeRouter.log` | Log file |
-| `NinjaTrader/WebhookOrderStrategy_v1.cs` | NT8 NinjaScript strategy |
+| `NinjaTrader/WebhookOrderStrategy.cs` | NT8 NinjaScript strategy |
 
 ---
 
