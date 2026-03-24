@@ -1,0 +1,86 @@
+name: Build TradeRouter
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore TradeRouter/TradeRouter.csproj
+
+      - name: Build (Debug check)
+        run: dotnet build TradeRouter/TradeRouter.csproj -c Debug --no-restore
+
+      - name: Publish self-contained single-file exe
+        run: >
+          dotnet publish TradeRouter/TradeRouter.csproj
+          -r win-x64
+          -c Release
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradeRouter-win-x64
+          path: publish/TradeRouter.exe
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish for release
+        run: >
+          dotnet publish TradeRouter/TradeRouter.csproj
+          -r win-x64
+          -c Release
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/
+
+      - name: Copy strategy with base name
+        run: Copy-Item NinjaTrader/WebhookOrderStrategy_v1.cs publish/WebhookOrderStrategy.cs
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            publish/TradeRouter.exe
+            publish/WebhookOrderStrategy.cs
+          generate_release_notes: true
+          name: TradeRouter ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

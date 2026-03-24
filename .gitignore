@@ -1,0 +1,18 @@
+# TradeRouter build artifacts
+dist/
+publish/
+*.user
+.vs/
+**/bin/
+**/obj/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
