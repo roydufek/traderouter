@@ -22,6 +22,7 @@ namespace TradeRouter
         private System.Windows.Forms.Label     lblPortLabel;
         private System.Windows.Forms.NumericUpDown nudPort;
         private System.Windows.Forms.Button    btnStartStop;
+        private System.Windows.Forms.Button    btnFixFirewall;
         private System.Windows.Forms.CheckBox  chkTailscale;
         private System.Windows.Forms.Label     lblUrlLabel;
         private System.Windows.Forms.Label     lblWebhookUrl;
@@ -88,6 +89,7 @@ namespace TradeRouter
             lblPortLabel        = new System.Windows.Forms.Label();
             nudPort             = new System.Windows.Forms.NumericUpDown();
             btnStartStop        = new System.Windows.Forms.Button();
+            btnFixFirewall      = new System.Windows.Forms.Button();
             chkTailscale        = new System.Windows.Forms.CheckBox();
             lblUrlLabel         = new System.Windows.Forms.Label();
             lblWebhookUrl       = new System.Windows.Forms.Label();
@@ -219,6 +221,14 @@ namespace TradeRouter
             btnStartStop.Size     = new System.Drawing.Size(100, 28);
             btnStartStop.Click   += btnStartStop_Click;
 
+            btnFixFirewall.Text      = "Fix Firewall";
+            btnFixFirewall.Location  = new System.Drawing.Point(284, 26);
+            btnFixFirewall.Size      = new System.Drawing.Size(96, 28);
+            btnFixFirewall.BackColor = System.Drawing.Color.FromArgb(60, 40, 20);
+            btnFixFirewall.ForeColor = System.Drawing.Color.FromArgb(255, 180, 80);
+            btnFixFirewall.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            btnFixFirewall.Click    += btnFixFirewall_Click;
+
             chkTailscale.Text     = "Tailscale Funnel";
             chkTailscale.Location = new System.Drawing.Point(392, 30);
             chkTailscale.Size     = new System.Drawing.Size(140, 20);
@@ -251,7 +261,7 @@ namespace TradeRouter
 
             grpWebhook.Controls.AddRange(new System.Windows.Forms.Control[]
             {
-                lblPortLabel, nudPort, btnStartStop, chkTailscale,
+                lblPortLabel, nudPort, btnStartStop, btnFixFirewall, chkTailscale,
                 lblUrlLabel, lblWebhookUrl, btnCopyUrl, btnCopyPayload
             });
 

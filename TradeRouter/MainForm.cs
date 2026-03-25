@@ -169,7 +169,7 @@ namespace TradeRouter
                 catch { return false; }
             });
 
-            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_1 in NT8)";
+            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_2 in NT8)";
             AppendConsole(nt8Msg, nt8Ok ? GreenColor : AmberColor);
             _logger.Info($"Self-test: {nt8Msg}");
 
@@ -259,7 +259,7 @@ namespace TradeRouter
                 _logger.Error($"NT8 connect: {ex.Message}");
                 MessageBox.Show(
                     $"Could not reach NT8 strategy on port {_nt8.Port}.\n\n{ex.Message}\n\n" +
-                    $"Make sure WebhookOrderStrategy_v1_0_1 is loaded in NT8 and listening on port {_nt8.Port}.",
+                    $"Make sure WebhookOrderStrategy_v1_0_2 is loaded in NT8 and listening on port {_nt8.Port}.",
                     "Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 btnConnect.Text = "Connect";
             }
@@ -330,8 +330,47 @@ namespace TradeRouter
                 }
             }
 
-            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_1 in NT8 (right-click → Reload).", AmberColor);
+            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_2 in NT8 (right-click → Reload).", AmberColor);
             btnRegisterPorts.Enabled = true;
+        }
+
+        private async void btnFixFirewall_Click(object sender, EventArgs e)
+        {
+            int port = (int)nudPort.Value;
+            btnFixFirewall.Enabled = false;
+
+            var result = MessageBox.Show(
+                $"Add Windows Firewall inbound rule for webhook port {port}?\n\n" +
+                "This allows TradeRouter to receive webhooks from TradingView/Tailscale.\n\n" +
+                "A UAC admin prompt will appear.",
+                "Fix Firewall",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+            { AppendConsole("Firewall fix skipped."); btnFixFirewall.Enabled = true; return; }
+
+            try
+            {
+                AppendConsole($"Adding firewall rule for port {port}...");
+                var psi = new ProcessStartInfo
+                {
+                    FileName        = "netsh",
+                    Arguments       = $"advfirewall firewall add rule name=\"TradeRouter Port {port}\" " +
+                                      $"dir=in action=allow protocol=TCP localport={port}",
+                    Verb            = "runas",
+                    UseShellExecute = true,
+                    CreateNoWindow  = true
+                };
+                var proc = Process.Start(psi);
+                await Task.Run(() => proc?.WaitForExit(10000));
+                AppendConsole($"Port {port}: ✓ firewall rule added.", GreenColor);
+            }
+            catch (Exception ex)
+            {
+                AppendConsole($"Firewall fix failed: {ex.Message}", RedColor);
+            }
+            btnFixFirewall.Enabled = true;
         }
 
         // ── Emergency Flatten ────────────────────────────────────────────────
@@ -444,6 +483,7 @@ namespace TradeRouter
         private void SetServerRunningUi(bool running)
         {
             nudPort.Enabled        = !running;
+            btnFixFirewall.Enabled = !running;
 
             // Don't use Enabled=false on CheckBox — WinForms overrides ForeColor with
             // system gray, which looks broken on dark theme. Lock it via event guard instead.
