@@ -169,7 +169,7 @@ namespace TradeRouter
                 catch { return false; }
             });
 
-            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_2 in NT8)";
+            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_3 in NT8)";
             AppendConsole(nt8Msg, nt8Ok ? GreenColor : AmberColor);
             _logger.Info($"Self-test: {nt8Msg}");
 
@@ -259,7 +259,7 @@ namespace TradeRouter
                 _logger.Error($"NT8 connect: {ex.Message}");
                 MessageBox.Show(
                     $"Could not reach NT8 strategy on port {_nt8.Port}.\n\n{ex.Message}\n\n" +
-                    $"Make sure WebhookOrderStrategy_v1_0_2 is loaded in NT8 and listening on port {_nt8.Port}.",
+                    $"Make sure WebhookOrderStrategy_v1_0_3 is loaded in NT8 and listening on port {_nt8.Port}.",
                     "Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 btnConnect.Text = "Connect";
             }
@@ -330,7 +330,7 @@ namespace TradeRouter
                 }
             }
 
-            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_2 in NT8 (right-click → Reload).", AmberColor);
+            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_3 in NT8 (right-click → Reload).", AmberColor);
             btnRegisterPorts.Enabled = true;
         }
 
@@ -339,10 +339,18 @@ namespace TradeRouter
             int port = (int)nudPort.Value;
             btnFixFirewall.Enabled = false;
 
+            bool alreadyOk = await Task.Run(() => IsFirewallRulePresent(port));
+            if (alreadyOk)
+            {
+                AppendConsole($"✓ Firewall rule for port {port} already exists.", GreenColor);
+                btnFixFirewall.Enabled = true;
+                return;
+            }
+
             var result = MessageBox.Show(
-                $"Add Windows Firewall inbound rule for webhook port {port}?\n\n" +
-                "This allows TradeRouter to receive webhooks from TradingView/Tailscale.\n\n" +
-                "A UAC admin prompt will appear.",
+                $"No Windows Firewall inbound rule found for port {port}.\n\n" +
+                "This is needed for TradeRouter to receive webhooks from TradingView/Tailscale.\n\n" +
+                "Click Yes to add the rule now (a UAC admin prompt will appear).",
                 "Fix Firewall",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -364,13 +372,35 @@ namespace TradeRouter
                 };
                 var proc = Process.Start(psi);
                 await Task.Run(() => proc?.WaitForExit(10000));
-                AppendConsole($"Port {port}: ✓ firewall rule added.", GreenColor);
+
+                bool ok = await Task.Run(() => IsFirewallRulePresent(port));
+                AppendConsole($"Port {port} firewall: {(ok ? "✓ rule added successfully" : "✗ still not found — try manually")}", ok ? GreenColor : RedColor);
             }
             catch (Exception ex)
             {
                 AppendConsole($"Firewall fix failed: {ex.Message}", RedColor);
             }
             btnFixFirewall.Enabled = true;
+        }
+
+        private static bool IsFirewallRulePresent(int port)
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = "netsh",
+                    Arguments              = $"advfirewall firewall show rule name=\"TradeRouter Port {port}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
+                var proc = Process.Start(psi)!;
+                string output = proc.StandardOutput.ReadToEnd();
+                proc.WaitForExit(5000);
+                return output.Contains($"{port}");
+            }
+            catch { return false; }
         }
 
         // ── Emergency Flatten ────────────────────────────────────────────────
