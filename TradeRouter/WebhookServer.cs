@@ -157,9 +157,9 @@ namespace TradeRouter
                     return;
                 }
 
-                if (payload == null || string.IsNullOrWhiteSpace(payload.Ticker))
+                if (payload == null || string.IsNullOrWhiteSpace(payload.Action))
                 {
-                    await SendResponse(response, 400, "Invalid payload: missing ticker");
+                    await SendResponse(response, 400, "Invalid payload: missing action");
                     return;
                 }
 
