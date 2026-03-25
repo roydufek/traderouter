@@ -1,4 +1,4 @@
-// WebhookOrderStrategy_v1_0_7 — ships with TradeRouter v1.0.7
+// WebhookOrderStrategy_v1_0_8 — ships with TradeRouter v1.0.8
 // Version this file together with TradeRouter releases. When strategy changes,
 // bump the TradeRouter version and update the tag above.
 #region Using declarations
@@ -62,7 +62,7 @@ using System.Windows;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
-    public class WebhookOrderStrategy_v1_0_7 : Strategy
+    public class WebhookOrderStrategy_v1_0_8 : Strategy
     {
         // ── Parameters ────────────────────────────────────────────────────────────
 
@@ -150,14 +150,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (EnableDebug)
             {
                 PrintTo = GetPrintTo();
-                Print($"[WOS1_0_7:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+                Print($"[WOS1_0_8:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
             }
         }
 
         private void LogAlways(string msg)
         {
             PrintTo = GetPrintTo();
-            Print($"[WOS1_0_7:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+            Print($"[WOS1_0_8:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
         }
 
         // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     case State.SetDefaults:
                         Description     = $"WebhookOrderStrategy v3 — TradersPost JSON format, configurable port for multi-account trade copying.";
-                        Name            = "WebhookOrderStrategy_v1_0_7";
+                        Name            = "WebhookOrderStrategy_v1_0_8";
                         Calculate       = Calculate.OnEachTick;
                         IsExitOnSessionCloseStrategy = false;
                         break;
@@ -446,6 +446,19 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (IsDailyCapBreached()) ordersDisabled = true;
         }
 
+        private void ExecuteAccountFlatten(string reason)
+        {
+            LogAlways($"⚠ Account flatten ({reason}) — closing all positions on account.");
+            try
+            {
+                Account.Flatten(new Instrument[] { Instrument });
+            }
+            catch (Exception ex) { LogAlways($"Account flatten error ({reason}): {ex.Message}"); }
+            perTradeFlatPending = false;
+            LogPnlSnapshot($"account-flatten:{reason}");
+            if (IsDailyCapBreached()) ordersDisabled = true;
+        }
+
         private void ExecutePayload(TpPayload p)
         {
             Log($"ExecutePayload: action={p.Action} sentiment={p.Sentiment} qty={p.Quantity} orderType={p.OrderType} limitPrice={p.LimitPrice}");
@@ -456,6 +469,14 @@ namespace NinjaTrader.NinjaScript.Strategies
 
             // ── Exits — processed even when ordersDisabled ─────────────────────
             bool isExit = p.Sentiment == "flat";
+
+            // action=flatten → nuclear account flatten (from Emergency Flatten button)
+            if (p.Action == "flatten")
+            {
+                ExecuteAccountFlatten("emergency-webhook");
+                return;
+            }
+
             if (isExit)
             {
                 var mp = GetCurrentMarketPosition();
@@ -508,10 +529,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     else
                     {
-                        LogAlways("⚠ Missed-flatten guard: short→flat before long entry.");
+                        LogAlways("⚠ AllowReversals=false: flattening short, not entering long.");
                         ExecuteFlatten("missed-flatten");
-                        System.Threading.Thread.Sleep(300);
-                        PlaceEntry(MarketDirection.Long, p, "FlatBuy");
                     }
                     return;
                 }
@@ -535,10 +554,8 @@ namespace NinjaTrader.NinjaScript.Strategies
                     }
                     else
                     {
-                        LogAlways("⚠ Missed-flatten guard: long→flat before short entry.");
+                        LogAlways("⚠ AllowReversals=false: flattening long, not entering short.");
                         ExecuteFlatten("missed-flatten");
-                        System.Threading.Thread.Sleep(300);
-                        PlaceEntry(MarketDirection.Short, p, "FlatSell");
                     }
                     return;
                 }

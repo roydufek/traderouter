@@ -79,11 +79,13 @@ Configure parameters:
 | Daily Max Loss | e.g. `1000` — stops new entries if today's P&L drops $1,000 |
 | Daily Profit Target | e.g. `2000` — stops new entries once $2,000 is banked today |
 | Per-Trade Max Loss | e.g. `500` — emergency flatten if unrealized loss exceeds $500 |
-| Allow Reversals | `false` (safer) — opposing entry flattens current position first |
+| Allow Reversals | `false` (safer) — opposing signal flattens current position, does not enter opposite |
+
+> **Bar type:** Run on **1-Minute** time bars. The strategy is webhook-driven and uses no chart signals, but `OnBarUpdate` drives the per-trade loss check and midnight P&L reset. 1-minute bars ensure both fire reliably even during slow overnight sessions. Renko bars are not recommended — no price movement means no bar update means delayed cap checks.
 
 Enable the strategy. In NT8 **Output Window** (Ctrl+Shift+O → Tab 1):
 ```
-[WOS1:XXXX:7091 HH:mm:ss] ✓ Listening on http://+:7091/
+[WOS1_0_x:XXXX:7091 HH:mm:ss] ✓ Listening on http://+:7091/
 ```
 
 ### 6. Configure TradeRouter
