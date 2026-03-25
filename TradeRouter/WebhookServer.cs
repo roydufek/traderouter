@@ -122,9 +122,13 @@ namespace TradeRouter
 
             try
             {
+                // Log every inbound request
+                Log($"← {request.HttpMethod} {request.Url?.PathAndQuery} from {sourceIp}");
+
                 // Only accept POST to /webhook or /webhook/
                 if (request.HttpMethod != "POST")
                 {
+                    Log($"→ 405 Method Not Allowed ({request.HttpMethod} not accepted)");
                     await SendResponse(response, 405, "Method Not Allowed");
                     return;
                 }
@@ -137,6 +141,7 @@ namespace TradeRouter
 
                 if (string.IsNullOrWhiteSpace(body))
                 {
+                    Log($"→ 400 Empty body");
                     await SendResponse(response, 400, "Empty body");
                     return;
                 }
@@ -152,13 +157,14 @@ namespace TradeRouter
                 }
                 catch (JsonException ex)
                 {
-                    Log($"JSON parse error from {sourceIp}: {ex.Message}");
+                    Log($"→ 400 JSON parse error: {ex.Message}");
                     await SendResponse(response, 400, $"Invalid JSON: {ex.Message}");
                     return;
                 }
 
                 if (payload == null || string.IsNullOrWhiteSpace(payload.Action))
                 {
+                    Log($"→ 400 Invalid payload: missing action. Body: {body}");
                     await SendResponse(response, 400, "Invalid payload: missing action");
                     return;
                 }
@@ -169,14 +175,13 @@ namespace TradeRouter
                     var result = Security.Check(sourceIp, payload.ApiKey, out string reason);
                     if (result != SecurityManager.AllowResult.Allowed)
                     {
-                        // Silent drop — close without sending any response body
-                        Log($"BLOCKED [{result}] {reason}");
+                        Log($"→ BLOCKED [{result}] {reason}");
                         try { response.Abort(); } catch { /* best effort */ }
                         return;
                     }
                 }
 
-                Log($"Received webhook [{sourceIp}]: {body}");
+                Log($"→ 200 OK | action={payload.Action} sentiment={payload.Sentiment} qty={payload.Quantity} price={payload.Price}");
 
                 // Fire event on a background thread
                 await Task.Run(() => WebhookReceived?.Invoke(this, payload));
@@ -185,7 +190,7 @@ namespace TradeRouter
             }
             catch (Exception ex)
             {
-                Log($"Request handler error: {ex.Message}");
+                Log($"→ 500 Request handler error: {ex.Message}");
                 try { await SendResponse(response, 500, "Internal server error"); } catch { /* best effort */ }
                 ErrorOccurred?.Invoke(this, ex);
             }
