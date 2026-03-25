@@ -24,6 +24,7 @@ namespace TradeRouter
         private readonly SecurityManager _security      = new();
         private readonly IniFile        _ini;
         private readonly FileLogger     _logger;
+        private bool                    _serverRunning  = false;
 
         private CancellationTokenSource? _connectCts;
 
@@ -168,24 +169,9 @@ namespace TradeRouter
                 catch { return false; }
             });
 
-            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_0 in NT8)";
+            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_1 in NT8)";
             AppendConsole(nt8Msg, nt8Ok ? GreenColor : AmberColor);
             _logger.Info($"Self-test: {nt8Msg}");
-
-            // Webhook port — urlacl + firewall
-            int webhookPort = (int)nudPort.Value;
-            bool urlAclOk = await Task.Run(() => IsPortRegistered(webhookPort));
-            bool fwOk     = await Task.Run(() => IsFirewallRulePresent(webhookPort));
-
-            if (urlAclOk && fwOk)
-                AppendConsole($"Webhook port {webhookPort}: ✓ urlacl and firewall OK.", GreenColor);
-            else
-            {
-                if (!urlAclOk)
-                    AppendConsole($"⚠ Port {webhookPort} not in urlacl — HttpListener may fall back to localhost-only. Click 'Register Ports' to fix.", AmberColor);
-                if (!fwOk)
-                    AppendConsole($"⚠ No Windows Firewall rule for port {webhookPort} — inbound webhooks may be blocked. Click 'Fix Firewall' to fix.", AmberColor);
-            }
 
             // Tailscale?
             bool tsOk = await Task.Run(() => TailscaleFunnel.IsTailscaleAvailable());
@@ -193,45 +179,10 @@ namespace TradeRouter
             AppendConsole(tsMsg, tsOk ? GreenColor : FgMuted);
             if (!tsOk) { chkTailscale.Enabled = false; chkTailscale.Text = "Tailscale (not found)"; }
 
-            // Tailscale funnel status check (only if Tailscale present)
-            if (tsOk)
-            {
-                string? funnelStatus = await Task.Run(() => GetFunnelStatus());
-                if (funnelStatus != null)
-                    AppendConsole($"tailscale funnel: {funnelStatus}", GreenColor);
-            }
+
 
             SetStatus($"Ready.  NT8:{(nt8Ok ? "✓" : "✗")}  Tailscale:{(tsOk ? "✓" : "✗")}");
             _logger.Info("Startup self-test complete.");
-        }
-
-        /// Returns a summary of current funnel status, or null if not active.
-        private static string? GetFunnelStatus()
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName               = "tailscale",
-                    Arguments              = "funnel status",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError  = true,
-                    UseShellExecute        = false,
-                    CreateNoWindow         = true
-                };
-                var proc = Process.Start(psi)!;
-                string stdout = proc.StandardOutput.ReadToEnd();
-                proc.WaitForExit(5000);
-
-                if (string.IsNullOrWhiteSpace(stdout)) return null;
-                // Strip ANSI escape codes for clean console output
-                stdout = System.Text.RegularExpressions.Regex.Replace(stdout, @"\x1B\[[^@-~]*[@-~]", "").Trim();
-                if (stdout.Length == 0) return null;
-                // Return first meaningful line
-                string firstLine = stdout.Split('\n')[0].Trim();
-                return firstLine.Length > 0 ? firstLine : null;
-            }
-            catch { return null; }
         }
 
         // ── Wire Events ───────────────────────────────────────────────────────
@@ -308,8 +259,7 @@ namespace TradeRouter
                 _logger.Error($"NT8 connect: {ex.Message}");
                 MessageBox.Show(
                     $"Could not reach NT8 strategy on port {_nt8.Port}.\n\n{ex.Message}\n\n" +
-                    $"Make sure WebhookOrderStrategy_v1_0_0 is loaded in NT8 and listening on port {_nt8.Port}.\n\n" +
-                    $"If needed, click 'Register Ports' to run the netsh setup.",
+                    $"Make sure WebhookOrderStrategy_v1_0_1 is loaded in NT8 and listening on port {_nt8.Port}.",
                     "Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 btnConnect.Text = "Connect";
             }
@@ -335,10 +285,10 @@ namespace TradeRouter
 
         // ── Port Registration ─────────────────────────────────────────────────
 
-        private List<int> GetAllPorts()
+        private List<int> GetNT8Ports()
         {
-            // Includes the webhook listener port AND all NT8 strategy ports
-            var ports = new List<int> { (int)nudPort.Value, (int)nudNT8Port.Value };
+            // NT8 strategy ports only — webhook port does NOT need urlacl registration
+            var ports = new List<int> { (int)nudNT8Port.Value };
             foreach (string s in txtCopyPorts.Text.Split(','))
             {
                 if (int.TryParse(s.Trim(), out int p) && p > 1023 && p <= 65535)
@@ -349,157 +299,39 @@ namespace TradeRouter
 
         private async void btnRegisterPorts_Click(object sender, EventArgs e)
         {
-            var ports = GetAllPorts();
+            var ports = GetNT8Ports();
             btnRegisterPorts.Enabled = false;
-            AppendConsole($"Checking netsh URL reservations for ports: {string.Join(", ", ports)}");
+            AppendConsole($"Registering NT8 ports: {string.Join(", ", ports)}");
 
-            var missing = new List<int>();
             foreach (int port in ports)
-            {
-                bool registered = await Task.Run(() => IsPortRegistered(port));
-                AppendConsole($"  Port {port}: {(registered ? "✓ registered" : "✗ not registered")}", registered ? GreenColor : AmberColor);
-                if (!registered) missing.Add(port);
-            }
-
-            if (missing.Count == 0)
-            {
-                AppendConsole("All ports already registered.", GreenColor);
-                btnRegisterPorts.Enabled = true;
-                return;
-            }
-
-            var result = MessageBox.Show(
-                $"The following ports need urlacl registration:\n\n{string.Join("\n", missing)}\n\n" +
-                "Click Yes to register now (requires a UAC admin prompt).\n" +
-                "Firewall rules for these ports will also be added.\n\n" +
-                "Click No to skip and register manually.",
-                "Register Ports",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (result != DialogResult.Yes)
-            { AppendConsole("Port registration skipped — register manually."); btnRegisterPorts.Enabled = true; return; }
-
-            foreach (int port in missing)
             {
                 try
                 {
-                    AppendConsole($"  Registering port {port}...");
-                    var psi = new ProcessStartInfo
+                    // Register both http://+: and http://localhost: — both required on some Windows configs
+                    foreach (string prefix in new[] { $"http://+:{port}/", $"http://localhost:{port}/" })
                     {
-                        FileName         = "netsh",
-                        Arguments        = $"http add urlacl url=http://+:{port}/ user=Everyone",
-                        Verb             = "runas",
-                        UseShellExecute  = true,
-                        CreateNoWindow   = true
-                    };
-                    var proc = Process.Start(psi);
-                    await Task.Run(() => proc?.WaitForExit(10000));
-
-                    // Verify urlacl
-                    bool ok = await Task.Run(() => IsPortRegistered(port));
-                    AppendConsole($"  Port {port}: {(ok ? "✓ registered successfully" : "✗ still not registered — try manually")}", ok ? GreenColor : RedColor);
-
-                    // Add Windows Firewall inbound rule
-                    AppendConsole($"  Adding firewall rule for port {port}...");
-                    try
-                    {
-                        var fwPsi = new ProcessStartInfo
+                        AppendConsole($"  Registering {prefix}...");
+                        var psi = new ProcessStartInfo
                         {
                             FileName        = "netsh",
-                            Arguments       = $"advfirewall firewall add rule name=\"TradeRouter Port {port}\" " +
-                                              $"dir=in action=allow protocol=TCP localport={port}",
+                            Arguments       = $"http add urlacl url={prefix} user=Everyone",
                             Verb            = "runas",
                             UseShellExecute = true,
                             CreateNoWindow  = true
                         };
-                        var fwProc = Process.Start(fwPsi);
-                        await Task.Run(() => fwProc?.WaitForExit(10000));
-                        AppendConsole($"  Port {port}: ✓ firewall rule added", GreenColor);
+                        var proc = Process.Start(psi);
+                        await Task.Run(() => proc?.WaitForExit(10000));
                     }
-                    catch (Exception fwEx)
-                    {
-                        AppendConsole($"  Port {port}: firewall rule failed — {fwEx.Message}", AmberColor);
-                    }
+                    AppendConsole($"  Port {port}: ✓ done", GreenColor);
                 }
                 catch (Exception ex)
                 {
-                    AppendConsole($"  Port {port}: registration failed — {ex.Message}", RedColor);
+                    AppendConsole($"  Port {port}: failed — {ex.Message}", RedColor);
                 }
             }
 
-            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_0 in NT8 (right-click → Reload) for changes to take effect.", AmberColor);
+            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_1 in NT8 (right-click → Reload).", AmberColor);
             btnRegisterPorts.Enabled = true;
-        }
-
-        private async void btnFixFirewall_Click(object sender, EventArgs e)
-        {
-            int port = (int)nudPort.Value;
-            btnFixFirewall.Enabled = false;
-
-            bool alreadyOk = await Task.Run(() => IsFirewallRulePresent(port));
-            if (alreadyOk)
-            {
-                AppendConsole($"✓ Firewall rule for port {port} already exists.", GreenColor);
-                btnFixFirewall.Enabled = true;
-                return;
-            }
-
-            var result = MessageBox.Show(
-                $"No Windows Firewall inbound rule found for port {port}.\n\n" +
-                "Click Yes to add the rule now (requires a UAC admin prompt).\n" +
-                "This allows TradeRouter to receive webhooks from TradingView.\n\n" +
-                "Click No to skip and add the rule manually.",
-                "Fix Firewall",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (result != DialogResult.Yes)
-            { AppendConsole("Firewall fix skipped — add rule manually."); btnFixFirewall.Enabled = true; return; }
-
-            try
-            {
-                AppendConsole($"Adding firewall rule for port {port}...");
-                var psi = new ProcessStartInfo
-                {
-                    FileName        = "netsh",
-                    Arguments       = $"advfirewall firewall add rule name=\"TradeRouter Port {port}\" " +
-                                      $"dir=in action=allow protocol=TCP localport={port}",
-                    Verb            = "runas",
-                    UseShellExecute = true,
-                    CreateNoWindow  = true
-                };
-                var proc = Process.Start(psi);
-                await Task.Run(() => proc?.WaitForExit(10000));
-
-                bool ok = await Task.Run(() => IsFirewallRulePresent(port));
-                AppendConsole($"Port {port} firewall: {(ok ? "✓ rule added successfully" : "✗ still not found — try manually")}", ok ? GreenColor : RedColor);
-            }
-            catch (Exception ex)
-            {
-                AppendConsole($"Firewall fix failed: {ex.Message}", RedColor);
-            }
-            btnFixFirewall.Enabled = true;
-        }
-
-        private static bool IsPortRegistered(int port)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName               = "netsh",
-                    Arguments              = $"http show urlacl url=http://+:{port}/",
-                    RedirectStandardOutput = true,
-                    UseShellExecute        = false,
-                    CreateNoWindow         = true
-                };
-                var proc   = Process.Start(psi)!;
-                string out_ = proc.StandardOutput.ReadToEnd();
-                proc.WaitForExit(5000);
-                return out_.Contains($"{port}");
-            }
-            catch { return false; }
         }
 
         // ── Emergency Flatten ────────────────────────────────────────────────
@@ -519,7 +351,7 @@ namespace TradeRouter
             AppendConsole("⚠ EMERGENCY FLATTEN — sending to all ports...", RedColor);
             _logger.Warn("Emergency flatten triggered by user.");
 
-            var ports = GetAllPorts();
+            var ports = GetNT8Ports();
             var tasks = new List<Task>();
 
             foreach (int port in ports)
@@ -575,9 +407,6 @@ namespace TradeRouter
                 return;
             }
 
-            // Check port registrations before starting
-            await CheckPortsBeforeStart();
-
             int port = (int)nudPort.Value;
             btnStartStop.Enabled = false;
             btnStartStop.Text    = "Starting...";
@@ -614,53 +443,24 @@ namespace TradeRouter
         /// Lock/unlock controls that shouldn't change while server is running.
         private void SetServerRunningUi(bool running)
         {
-            nudPort.Enabled          = !running;
-            chkTailscale.Enabled     = !running;
-            btnFixFirewall.Enabled   = !running;
-        }
+            nudPort.Enabled        = !running;
 
-        /// Checks webhook server port registration (separate from NT8 strategy ports)
-        private async Task CheckPortsBeforeStart()
-        {
-            int webhookPort = (int)nudPort.Value;
-
-            // urlacl check
-            bool registered = await Task.Run(() => IsPortRegistered(webhookPort));
-            if (!registered)
-                AppendConsole($"⚠ Port {webhookPort} not in urlacl — HttpListener may fall back to localhost-only. Click 'Register Ports' to fix.", AmberColor);
-
-            // Firewall check
-            bool fwOk = await Task.Run(() => IsFirewallRulePresent(webhookPort));
-            if (!fwOk)
-                AppendConsole($"⚠ No Windows Firewall rule found for port {webhookPort} — inbound webhooks may be blocked. Click 'Register Ports' to fix.", AmberColor);
-
-            if (registered && fwOk)
-                AppendConsole($"✓ Port {webhookPort}: urlacl and firewall OK.", GreenColor);
-        }
-
-        private static bool IsFirewallRulePresent(int port)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName               = "netsh",
-                    Arguments              = $"advfirewall firewall show rule name=\"TradeRouter Port {port}\"",
-                    RedirectStandardOutput = true,
-                    UseShellExecute        = false,
-                    CreateNoWindow         = true
-                };
-                var proc = Process.Start(psi)!;
-                string output = proc.StandardOutput.ReadToEnd();
-                proc.WaitForExit(5000);
-                return output.Contains($"{port}");
-            }
-            catch { return false; }
+            // Don't use Enabled=false on CheckBox — WinForms overrides ForeColor with
+            // system gray, which looks broken on dark theme. Lock it via event guard instead.
+            chkTailscale.ForeColor = running ? FgMuted : FgText;
+            _serverRunning = running;
         }
 
         private void chkTailscale_CheckedChanged(object? sender, EventArgs e)
         {
-            // Only acts when server is NOT running (checkbox is locked while running)
+            // Ignore while server is running — checkbox is visually muted but still clickable
+            if (_serverRunning)
+            {
+                chkTailscale.CheckedChanged -= chkTailscale_CheckedChanged;
+                chkTailscale.Checked = !chkTailscale.Checked; // revert
+                chkTailscale.CheckedChanged += chkTailscale_CheckedChanged;
+                return;
+            }
             if (!_tailscale.IsRunning) return;
             Task.Run(() => _tailscale.Stop());
             lblWebhookUrl.Text = $"http://localhost:{nudPort.Value}/webhook/";

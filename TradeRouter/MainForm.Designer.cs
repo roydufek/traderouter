@@ -22,7 +22,6 @@ namespace TradeRouter
         private System.Windows.Forms.Label     lblPortLabel;
         private System.Windows.Forms.NumericUpDown nudPort;
         private System.Windows.Forms.Button    btnStartStop;
-        private System.Windows.Forms.Button    btnFixFirewall;
         private System.Windows.Forms.CheckBox  chkTailscale;
         private System.Windows.Forms.Label     lblUrlLabel;
         private System.Windows.Forms.Label     lblWebhookUrl;
@@ -89,7 +88,6 @@ namespace TradeRouter
             lblPortLabel        = new System.Windows.Forms.Label();
             nudPort             = new System.Windows.Forms.NumericUpDown();
             btnStartStop        = new System.Windows.Forms.Button();
-            btnFixFirewall      = new System.Windows.Forms.Button();
             chkTailscale        = new System.Windows.Forms.CheckBox();
             lblUrlLabel         = new System.Windows.Forms.Label();
             lblWebhookUrl       = new System.Windows.Forms.Label();
@@ -173,13 +171,13 @@ namespace TradeRouter
             lblCopyPortsLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             txtCopyPorts.Location     = new System.Drawing.Point(92, 70);
-            txtCopyPorts.Size         = new System.Drawing.Size(260, 23);
+            txtCopyPorts.Size         = new System.Drawing.Size(200, 23);
             txtCopyPorts.PlaceholderText = "e.g. 7092, 7093  (comma-separated)";
             txtCopyPorts.TextChanged += txtCopyPorts_TextChanged;
 
             btnRegisterPorts.Text     = "Register Ports";
-            btnRegisterPorts.Location = new System.Drawing.Point(364, 68);
-            btnRegisterPorts.Size     = new System.Drawing.Size(108, 26);
+            btnRegisterPorts.Location = new System.Drawing.Point(304, 68);
+            btnRegisterPorts.Size     = new System.Drawing.Size(168, 26);
             btnRegisterPorts.Click   += btnRegisterPorts_Click;
 
             // Emergency Flatten
@@ -221,14 +219,6 @@ namespace TradeRouter
             btnStartStop.Size     = new System.Drawing.Size(100, 28);
             btnStartStop.Click   += btnStartStop_Click;
 
-            btnFixFirewall.Text      = "Fix Firewall";
-            btnFixFirewall.Location  = new System.Drawing.Point(284, 26);
-            btnFixFirewall.Size      = new System.Drawing.Size(96, 28);
-            btnFixFirewall.BackColor = System.Drawing.Color.FromArgb(60, 40, 20);
-            btnFixFirewall.ForeColor = System.Drawing.Color.FromArgb(255, 180, 80);
-            btnFixFirewall.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            btnFixFirewall.Click    += btnFixFirewall_Click;
-
             chkTailscale.Text     = "Tailscale Funnel";
             chkTailscale.Location = new System.Drawing.Point(392, 30);
             chkTailscale.Size     = new System.Drawing.Size(140, 20);
@@ -242,26 +232,26 @@ namespace TradeRouter
 
             lblWebhookUrl.Text      = "(server stopped)";
             lblWebhookUrl.Location  = new System.Drawing.Point(638, 30);
-            lblWebhookUrl.Size      = new System.Drawing.Size(320, 20);
+            lblWebhookUrl.Size      = new System.Drawing.Size(280, 20);
             lblWebhookUrl.AutoSize  = false;
             lblWebhookUrl.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             lblWebhookUrl.Anchor    = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
             btnCopyUrl.Text     = "Copy URL";
-            btnCopyUrl.Location = new System.Drawing.Point(870, 26);
-            btnCopyUrl.Size     = new System.Drawing.Size(80, 26);
+            btnCopyUrl.Location = new System.Drawing.Point(924, 26);
+            btnCopyUrl.Size     = new System.Drawing.Size(68, 26);
             btnCopyUrl.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyUrl.Click   += btnCopyUrl_Click;
 
             btnCopyPayload.Text     = "Copy Payload";
-            btnCopyPayload.Location = new System.Drawing.Point(956, 26);
-            btnCopyPayload.Size     = new System.Drawing.Size(100, 26);
+            btnCopyPayload.Location = new System.Drawing.Point(996, 26);
+            btnCopyPayload.Size     = new System.Drawing.Size(68, 26);
             btnCopyPayload.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyPayload.Click   += btnCopyPayload_Click;
 
             grpWebhook.Controls.AddRange(new System.Windows.Forms.Control[]
             {
-                lblPortLabel, nudPort, btnStartStop, btnFixFirewall, chkTailscale,
+                lblPortLabel, nudPort, btnStartStop, chkTailscale,
                 lblUrlLabel, lblWebhookUrl, btnCopyUrl, btnCopyPayload
             });
 

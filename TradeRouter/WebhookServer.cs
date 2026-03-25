@@ -47,11 +47,12 @@ namespace TradeRouter
             }
             catch (HttpListenerException ex) when (ex.ErrorCode == 5) // Access denied
             {
-                // Try localhost only as fallback
+                // Fall back to localhost-only if + prefix is denied (no urlacl registered)
                 _listener = new HttpListener();
                 _listener.Prefixes.Add($"http://localhost:{port}/webhook/");
                 _listener.Prefixes.Add($"http://127.0.0.1:{port}/webhook/");
                 _listener.Start();
+                Log($"⚠ Listening on localhost only — run 'Register Ports' to enable external access.");
             }
 
             IsRunning = true;
