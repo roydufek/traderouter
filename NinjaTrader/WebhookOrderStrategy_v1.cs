@@ -1,4 +1,4 @@
-// WebhookOrderStrategy_v1_0_9 — ships with TradeRouter v1.0.9
+// WebhookOrderStrategy_v1_0_10 — ships with TradeRouter v1.0.10
 // Version this file together with TradeRouter releases. When strategy changes,
 // bump the TradeRouter version and update the tag above.
 #region Using declarations
@@ -62,7 +62,7 @@ using System.Windows;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
-    public class WebhookOrderStrategy_v1_0_9 : Strategy
+    public class WebhookOrderStrategy_v1_0_10 : Strategy
     {
         // ── Parameters ────────────────────────────────────────────────────────────
 
@@ -85,14 +85,24 @@ namespace NinjaTrader.NinjaScript.Strategies
         public double DailyMaxLoss { get; set; } = 1000;
 
         [NinjaScriptProperty]
+        [Display(Name = "Flatten at Daily Max Loss", Order = 2, GroupName = "Daily Caps",
+            Description = "If checked, immediately flattens any open position when daily max loss is hit, in addition to blocking new entries.")]
+        public bool FlattenAtDailyMaxLoss { get; set; } = false;
+
+        [NinjaScriptProperty]
         [Range(0, double.MaxValue)]
-        [Display(Name = "Daily Profit Target ($, 0=off)", Order = 2, GroupName = "Daily Caps",
+        [Display(Name = "Daily Profit Target ($, 0=off)", Order = 3, GroupName = "Daily Caps",
             Description = "Stops new entries once today's realized P&L reaches this profit. Resets at midnight.")]
         public double DailyProfitTarget { get; set; } = 2000;
 
         [NinjaScriptProperty]
+        [Display(Name = "Flatten at Daily Profit Target", Order = 4, GroupName = "Daily Caps",
+            Description = "If checked, immediately flattens any open position when daily profit target is hit, in addition to blocking new entries.")]
+        public bool FlattenAtDailyProfitTarget { get; set; } = false;
+
+        [NinjaScriptProperty]
         [Range(0, double.MaxValue)]
-        [Display(Name = "Per-Trade Max Loss ($, 0=off)", Order = 3, GroupName = "Daily Caps",
+        [Display(Name = "Per-Trade Max Loss ($, 0=off)", Order = 5, GroupName = "Daily Caps",
             Description = "Emergency market flatten if unrealized loss on open trade exceeds this. Backstop for missed exit webhooks.")]
         public double PerTradeMaxLoss { get; set; } = 500;
 
@@ -150,14 +160,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (EnableDebug)
             {
                 PrintTo = GetPrintTo();
-                Print($"[WOS1_0_9:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+                Print($"[WOS1_0_10:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
             }
         }
 
         private void LogAlways(string msg)
         {
             PrintTo = GetPrintTo();
-            Print($"[WOS1_0_9:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+            Print($"[WOS1_0_10:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
         }
 
         // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -170,13 +180,13 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     case State.SetDefaults:
                         Description     = $"WebhookOrderStrategy v3 — TradersPost JSON format, configurable port for multi-account trade copying.";
-                        Name            = "WebhookOrderStrategy_v1_0_9";
+                        Name            = "WebhookOrderStrategy_v1_0_10";
                         Calculate       = Calculate.OnEachTick;
                         IsExitOnSessionCloseStrategy = false;
                         break;
 
                     case State.DataLoaded:
-                        LogAlways($"Init — Port={ListenerPort} DailyMaxLoss={DailyMaxLoss} DailyPT={DailyProfitTarget} PerTradeLoss={PerTradeMaxLoss}");
+                        LogAlways($"Init — Port={ListenerPort} DailyMaxLoss={DailyMaxLoss}(flatten={FlattenAtDailyMaxLoss}) DailyPT={DailyProfitTarget}(flatten={FlattenAtDailyProfitTarget}) PerTradeLoss={PerTradeMaxLoss}");
                         InitState();
                         CheckStartupFlat();
                         StartProcessor();
@@ -270,18 +280,28 @@ namespace NinjaTrader.NinjaScript.Strategies
 
         private double GetDailyPnl() => GetCumRealizedPnl() - dailyStartPnl;
 
-        /// Returns true and logs if either daily cap is breached.
+        /// Returns true and logs if either daily cap is breached. Flattens open position if configured.
         private bool IsDailyCapBreached()
         {
             double pnl = GetDailyPnl();
             if (DailyMaxLoss > 0 && pnl <= -DailyMaxLoss)
             {
                 LogAlways($"🛑 Daily max loss reached: {pnl:C2} (limit -${DailyMaxLoss}). No new entries today.");
+                if (FlattenAtDailyMaxLoss && GetCurrentMarketPosition() != MarketPosition.Flat)
+                {
+                    LogAlways("🛑 Flatten at Daily Max Loss — closing open position.");
+                    ExecuteAccountFlatten("daily-max-loss");
+                }
                 return true;
             }
             if (DailyProfitTarget > 0 && pnl >= DailyProfitTarget)
             {
                 LogAlways($"✅ Daily profit target reached: {pnl:C2} (target ${DailyProfitTarget}). No new entries today.");
+                if (FlattenAtDailyProfitTarget && GetCurrentMarketPosition() != MarketPosition.Flat)
+                {
+                    LogAlways("✅ Flatten at Daily Profit Target — closing open position.");
+                    ExecuteAccountFlatten("daily-profit-target");
+                }
                 return true;
             }
             return false;

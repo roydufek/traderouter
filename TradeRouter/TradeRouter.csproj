@@ -8,9 +8,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>TradeRouter</AssemblyName>
     <RootNamespace>TradeRouter</RootNamespace>
-    <Version>1.0.9</Version>
-    <AssemblyVersion>1.0.9.0</AssemblyVersion>
-    <FileVersion>1.0.9.0</FileVersion>
+    <Version>1.0.10</Version>
+    <AssemblyVersion>1.0.10.0</AssemblyVersion>
+    <FileVersion>1.0.10.0</FileVersion>
     <Description>TradeRouter - TradingView to NinjaTrader 8 ATI Bridge</Description>
     <Company>TradeRouter</Company>
     <Copyright>Copyright © 2026</Copyright>
