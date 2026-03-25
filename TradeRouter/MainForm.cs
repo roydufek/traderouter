@@ -169,7 +169,7 @@ namespace TradeRouter
                 catch { return false; }
             });
 
-            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_3 in NT8)";
+            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_4 in NT8)";
             AppendConsole(nt8Msg, nt8Ok ? GreenColor : AmberColor);
             _logger.Info($"Self-test: {nt8Msg}");
 
@@ -179,9 +179,15 @@ namespace TradeRouter
             AppendConsole(tsMsg, tsOk ? GreenColor : FgMuted);
             if (!tsOk) { chkTailscale.Enabled = false; chkTailscale.Text = "Tailscale (not found)"; }
 
+            // Firewall check (passive — info only)
+            int webhookPort = (int)nudPort.Value;
+            bool fwOk = await Task.Run(() => IsFirewallRulePresent(webhookPort));
+            AppendConsole(fwOk
+                ? $"Firewall: ✓ rule exists for port {webhookPort}."
+                : $"Firewall: ✗ no rule for port {webhookPort} — click 'Fix Firewall' before starting.",
+                fwOk ? GreenColor : AmberColor);
 
-
-            SetStatus($"Ready.  NT8:{(nt8Ok ? "✓" : "✗")}  Tailscale:{(tsOk ? "✓" : "✗")}");
+            SetStatus($"Ready.  NT8:{(nt8Ok ? "✓" : "✗")}  Tailscale:{(tsOk ? "✓" : "✗")}  Firewall:{(fwOk ? "✓" : "✗")}");
             _logger.Info("Startup self-test complete.");
         }
 
@@ -259,7 +265,7 @@ namespace TradeRouter
                 _logger.Error($"NT8 connect: {ex.Message}");
                 MessageBox.Show(
                     $"Could not reach NT8 strategy on port {_nt8.Port}.\n\n{ex.Message}\n\n" +
-                    $"Make sure WebhookOrderStrategy_v1_0_3 is loaded in NT8 and listening on port {_nt8.Port}.",
+                    $"Make sure WebhookOrderStrategy_v1_0_4 is loaded in NT8 and listening on port {_nt8.Port}.",
                     "Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 btnConnect.Text = "Connect";
             }
@@ -330,7 +336,7 @@ namespace TradeRouter
                 }
             }
 
-            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_3 in NT8 (right-click → Reload).", AmberColor);
+            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_4 in NT8 (right-click → Reload).", AmberColor);
             btnRegisterPorts.Enabled = true;
         }
 
@@ -479,6 +485,48 @@ namespace TradeRouter
             int port = (int)nudPort.Value;
             btnStartStop.Enabled = false;
             btnStartStop.Text    = "Starting...";
+
+            // Firewall check before starting
+            bool fwReady = await Task.Run(() => IsFirewallRulePresent(port));
+            if (!fwReady)
+            {
+                var fwResult = MessageBox.Show(
+                    $"No Windows Firewall inbound rule found for port {port}.\n\n" +
+                    "Without this, inbound webhooks from TradingView/Tailscale may be blocked.\n\n" +
+                    "Click Yes to add the rule now (UAC prompt will appear).\n" +
+                    "Click No to skip and accept the risk.",
+                    "Firewall Rule Missing",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (fwResult == DialogResult.Yes)
+                {
+                    try
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName        = "netsh",
+                            Arguments       = $"advfirewall firewall add rule name=\"TradeRouter Port {port}\" " +
+                                              $"dir=in action=allow protocol=TCP localport={port}",
+                            Verb            = "runas",
+                            UseShellExecute = true,
+                            CreateNoWindow  = true
+                        };
+                        var proc = Process.Start(psi);
+                        await Task.Run(() => proc?.WaitForExit(10000));
+                        bool ok = await Task.Run(() => IsFirewallRulePresent(port));
+                        AppendConsole(ok ? $"✓ Firewall rule added for port {port}." : $"⚠ Firewall rule may not have been added — proceeding anyway.", ok ? GreenColor : AmberColor);
+                    }
+                    catch (Exception fwEx)
+                    {
+                        AppendConsole($"⚠ Firewall rule failed: {fwEx.Message} — proceeding anyway.", AmberColor);
+                    }
+                }
+                else
+                {
+                    AppendConsole("⚠ Firewall rule skipped — inbound webhooks may not reach this port.", AmberColor);
+                }
+            }
 
             try
             {
