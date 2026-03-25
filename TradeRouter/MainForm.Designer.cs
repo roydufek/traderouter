@@ -248,14 +248,14 @@ namespace TradeRouter
             lblWebhookUrl.Anchor    = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
             btnCopyUrl.Text     = "Copy URL";
-            btnCopyUrl.Location = new System.Drawing.Point(924, 26);
-            btnCopyUrl.Size     = new System.Drawing.Size(68, 26);
+            btnCopyUrl.Location = new System.Drawing.Point(900, 26);
+            btnCopyUrl.Size     = new System.Drawing.Size(84, 26);
             btnCopyUrl.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyUrl.Click   += btnCopyUrl_Click;
 
             btnCopyPayload.Text     = "Copy Payload";
-            btnCopyPayload.Location = new System.Drawing.Point(996, 26);
-            btnCopyPayload.Size     = new System.Drawing.Size(68, 26);
+            btnCopyPayload.Location = new System.Drawing.Point(988, 26);
+            btnCopyPayload.Size     = new System.Drawing.Size(96, 26);
             btnCopyPayload.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyPayload.Click   += btnCopyPayload_Click;
 

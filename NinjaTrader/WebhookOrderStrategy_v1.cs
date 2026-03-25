@@ -1,4 +1,4 @@
-// WebhookOrderStrategy_v1_0_4 — ships with TradeRouter v1.0.4
+// WebhookOrderStrategy_v1_0_5 — ships with TradeRouter v1.0.5
 // Version this file together with TradeRouter releases. When strategy changes,
 // bump the TradeRouter version and update the tag above.
 #region Using declarations
@@ -62,7 +62,7 @@ using System.Windows;
 
 namespace NinjaTrader.NinjaScript.Strategies
 {
-    public class WebhookOrderStrategy_v1_0_4 : Strategy
+    public class WebhookOrderStrategy_v1_0_5 : Strategy
     {
         // ── Parameters ────────────────────────────────────────────────────────────
 
@@ -150,14 +150,14 @@ namespace NinjaTrader.NinjaScript.Strategies
             if (EnableDebug)
             {
                 PrintTo = GetPrintTo();
-                Print($"[WOS1_0_4:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+                Print($"[WOS1_0_5:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
             }
         }
 
         private void LogAlways(string msg)
         {
             PrintTo = GetPrintTo();
-            Print($"[WOS1_0_4:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
+            Print($"[WOS1_0_5:{_acctSuffix}:{ListenerPort} {DateTime.Now:HH:mm:ss.fff}] {msg}");
         }
 
         // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ namespace NinjaTrader.NinjaScript.Strategies
                 {
                     case State.SetDefaults:
                         Description     = $"WebhookOrderStrategy v3 — TradersPost JSON format, configurable port for multi-account trade copying.";
-                        Name            = "WebhookOrderStrategy_v1_0_4";
+                        Name            = "WebhookOrderStrategy_v1_0_5";
                         Calculate       = Calculate.OnEachTick;
                         IsExitOnSessionCloseStrategy = false;
                         break;
