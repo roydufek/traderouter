@@ -169,7 +169,7 @@ namespace TradeRouter
                 catch { return false; }
             });
 
-            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_8 in NT8)";
+            string nt8Msg = nt8Ok ? $"NT8:{_nt8.Port} ✓ reachable" : $"NT8:{_nt8.Port} ✗ not reachable (start WebhookOrderStrategy_v1_0_9 in NT8)";
             AppendConsole(nt8Msg, nt8Ok ? GreenColor : AmberColor);
             _logger.Info($"Self-test: {nt8Msg}");
 
@@ -265,7 +265,7 @@ namespace TradeRouter
                 _logger.Error($"NT8 connect: {ex.Message}");
                 MessageBox.Show(
                     $"Could not reach NT8 strategy on port {_nt8.Port}.\n\n{ex.Message}\n\n" +
-                    $"Make sure WebhookOrderStrategy_v1_0_8 is loaded in NT8 and listening on port {_nt8.Port}.",
+                    $"Make sure WebhookOrderStrategy_v1_0_9 is loaded in NT8 and listening on port {_nt8.Port}.",
                     "Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 btnConnect.Text = "Connect";
             }
@@ -336,7 +336,7 @@ namespace TradeRouter
                 }
             }
 
-            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_8 in NT8 (right-click → Reload).", AmberColor);
+            AppendConsole("Done. Reload WebhookOrderStrategy_v1_0_9 in NT8 (right-click → Reload).", AmberColor);
             btnRegisterPorts.Enabled = true;
         }
 
@@ -758,6 +758,10 @@ namespace TradeRouter
             pnlStatusDot.BackColor = dot;
             lblNT8Status.Text      = label;
             lblNT8Status.ForeColor = dot;
+
+            // Keep button label in sync with actual connection state
+            btnConnect.Text    = (state == NT8Client.ConnectionState.Connected) ? "Disconnect" : "Connect";
+            btnConnect.Enabled = (state != NT8Client.ConnectionState.Connecting);
         }
 
         // ── Console ───────────────────────────────────────────────────────────

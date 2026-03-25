@@ -200,7 +200,7 @@ namespace TradeRouter
             // ── grpWebhook (top, below NT8, full-width) ────────────────────
             grpWebhook.Text     = "Webhook Server (TradingView Inbound)";
             grpWebhook.Location = new System.Drawing.Point(12, 174);
-            grpWebhook.Size     = new System.Drawing.Size(1074, 90);
+            grpWebhook.Size     = new System.Drawing.Size(1074, 100);
             grpWebhook.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
             lblPortLabel.Text      = "Listen Port:";
@@ -234,28 +234,29 @@ namespace TradeRouter
             chkTailscale.Size     = new System.Drawing.Size(140, 20);
             chkTailscale.CheckedChanged += chkTailscale_CheckedChanged;
 
+            // URL row — full width below the controls row
             lblUrlLabel.Text      = "Webhook URL:";
-            lblUrlLabel.Location  = new System.Drawing.Point(550, 30);
+            lblUrlLabel.Location  = new System.Drawing.Point(14, 62);
             lblUrlLabel.Size      = new System.Drawing.Size(84, 20);
             lblUrlLabel.AutoSize  = false;
             lblUrlLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             lblWebhookUrl.Text      = "(server stopped)";
-            lblWebhookUrl.Location  = new System.Drawing.Point(638, 30);
-            lblWebhookUrl.Size      = new System.Drawing.Size(280, 20);
+            lblWebhookUrl.Location  = new System.Drawing.Point(100, 62);
+            lblWebhookUrl.Size      = new System.Drawing.Size(760, 20);
             lblWebhookUrl.AutoSize  = false;
             lblWebhookUrl.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             lblWebhookUrl.Anchor    = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
             btnCopyUrl.Text     = "Copy URL";
-            btnCopyUrl.Location = new System.Drawing.Point(900, 26);
-            btnCopyUrl.Size     = new System.Drawing.Size(84, 26);
+            btnCopyUrl.Location = new System.Drawing.Point(868, 58);
+            btnCopyUrl.Size     = new System.Drawing.Size(90, 26);
             btnCopyUrl.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyUrl.Click   += btnCopyUrl_Click;
 
             btnCopyPayload.Text     = "Copy Payload";
-            btnCopyPayload.Location = new System.Drawing.Point(988, 26);
-            btnCopyPayload.Size     = new System.Drawing.Size(96, 26);
+            btnCopyPayload.Location = new System.Drawing.Point(962, 58);
+            btnCopyPayload.Size     = new System.Drawing.Size(100, 26);
             btnCopyPayload.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             btnCopyPayload.Click   += btnCopyPayload_Click;
 
@@ -267,7 +268,7 @@ namespace TradeRouter
 
             // ── grpSecurity ────────────────────────────────────────────────
             grpSecurity.Text     = "Security";
-            grpSecurity.Location = new System.Drawing.Point(12, 276);
+            grpSecurity.Location = new System.Drawing.Point(12, 286);
             grpSecurity.Size     = new System.Drawing.Size(1074, 130);
             grpSecurity.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
 
@@ -347,7 +348,7 @@ namespace TradeRouter
 
             // ── grpConsole (full-width, fills remaining height) ────────────
             grpConsole.Text     = "Console";
-            grpConsole.Location = new System.Drawing.Point(12, 418);
+            grpConsole.Location = new System.Drawing.Point(12, 428);
             grpConsole.Size     = new System.Drawing.Size(1074, 326);
             grpConsole.Anchor   = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom
                                 | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
